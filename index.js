@@ -163,6 +163,9 @@ class RNCallKeep {
 
   checkIsInManagedCall = async () => isIOS? false: RNCallKeepModule.checkIsInManagedCall();
 
+  setDefaultAudioRoute = (uuid, route) =>
+    isIOS ? Promise.reject('RNCallKeep.checkSpeaker was called from unsupported OS') : RNCallKeepModule.setDefaultAudioRoute(uuid, route);
+
   answerIncomingCall = (uuid) => {
     RNCallKeepModule.answerIncomingCall(uuid);
   };

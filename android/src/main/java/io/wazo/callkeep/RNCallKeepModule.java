@@ -131,6 +131,7 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule implements Life
     private WritableNativeArray delayedEvents;
     private boolean hasListeners = false;
     private boolean hasActiveCall = false;
+    private AudioRouteManager audioRouteManager;
 
     public static RNCallKeepModule getInstance(ReactApplicationContext reactContext, boolean realContext) {
         if (instance == null) {
@@ -161,6 +162,8 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule implements Life
 
         this.reactContext = reactContext;
         delayedEvents = new WritableNativeArray();
+
+        audioRouteManager = new AudioRouteManager(reactContext);
     }
 
     private boolean isSelfManaged() {
@@ -821,36 +824,22 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule implements Life
         }
     }
 
+    public void setAudioRoute(String uuid, String audioRoute, Promise promise) {
+        boolean success = audioRouteManager.setAudioRoute(uuid, audioRoute);
+        if (success) {
+            promise.resolve(null);
+        } else {
+            promise.reject("SET_AUDIO_ROUTE_FAILED", "Failed to set audio route for call: " + uuid);
+        }
+    }
+
     @ReactMethod
-    public void setAudioRoute(String uuid, String audioRoute, Promise promise){
-        try {
-            VoiceConnection conn = (VoiceConnection) VoiceConnectionService.getConnection(uuid);
-            if (conn == null) {
-                return;
-            }
-            if(audioRoute.equals("Bluetooth")) {
-                Log.d(TAG,"[RNCallKeepModule] setting audio route: Bluetooth");
-                conn.setAudioRoute(CallAudioState.ROUTE_BLUETOOTH);
-                promise.resolve(true);
-                return;
-            }
-            if(audioRoute.equals("Headset")) {
-                Log.d(TAG,"[RNCallKeepModule] setting audio route: Headset");
-                conn.setAudioRoute(CallAudioState.ROUTE_WIRED_HEADSET);
-                promise.resolve(true);
-                return;
-            }
-            if(audioRoute.equals("Speaker")) {
-                Log.d(TAG,"[RNCallKeepModule] setting audio route: Speaker");
-                conn.setAudioRoute(CallAudioState.ROUTE_SPEAKER);
-                promise.resolve(true);
-                return;
-            }
-            Log.d(TAG,"[RNCallKeepModule] setting audio route: Wired/Earpiece");
-            conn.setAudioRoute(CallAudioState.ROUTE_WIRED_OR_EARPIECE);
-            promise.resolve(true);
-        } catch (Exception e) {
-            promise.reject("SetAudioRoute", e.getMessage());
+    public void clearAudioRoute(String uuid, Promise promise) {
+        boolean success = audioRouteManager.clearAudioRoute(uuid);
+        if (success) {
+            promise.resolve(null);
+        } else {
+            promise.reject("CLEAR_AUDIO_ROUTE_FAILED", "Failed to clear audio route for call: " + uuid);
         }
     }
 

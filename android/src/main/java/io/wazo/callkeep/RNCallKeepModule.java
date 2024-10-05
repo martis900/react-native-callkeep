@@ -516,13 +516,16 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule implements Life
         Log.d(TAG, "[RNCallKeepModule] startCall, uuid: " + uuid);
         this.listenToNativeCallsState();
         telecomManager.placeCall(uri, extras);
+
+        audioRouteManager.registerAudioDeviceCallback();
+        audioRouteManager.setUUID(uuid);
     }
 
     @ReactMethod
     public void endCall(String uuid) {
         Log.d(TAG, "[RNCallKeepModule] endCall called, uuid: " + uuid);
         if (!isConnectionServiceAvailable() || !hasPhoneAccount()) {
-           Log.w(TAG, "[RNCallKeepModule] endCall ignored due to no ConnectionService or no phone account");
+            Log.w(TAG, "[RNCallKeepModule] endCall ignored due to no ConnectionService or no phone account");
             return;
         }
 
@@ -538,6 +541,9 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule implements Life
         this.stopListenToNativeCallsState();
         this.hasActiveCall = false;
         Log.d(TAG, "[RNCallKeepModule] endCall executed, uuid: " + uuid);
+
+        audioRouteManager.unregisterAudioDeviceCallback();
+        audioRouteManager.clearUUID();
     }
 
     @ReactMethod
@@ -723,6 +729,9 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule implements Life
         conn.reportDisconnect(reason);
 
         this.stopListenToNativeCallsState();
+
+        audioRouteManager.unregisterAudioDeviceCallback();
+        audioRouteManager.clearUUID();
     }
 
    @Override
@@ -831,6 +840,16 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule implements Life
             promise.resolve(null);
         } else {
             promise.reject("SET_AUDIO_ROUTE_FAILED", "Failed to set audio route for call: " + uuid);
+        }
+    }
+
+    @ReactMethod
+    public void setDefaultAudioRoute(String uuid, String audioRoute, Promise promise) {
+        boolean success = audioRouteManager.setDefaultAudioRoute(uuid, audioRoute);
+        if (success) {
+            promise.resolve(null);
+        } else {
+            promise.reject("SET_DEFAULT_AUDIO_ROUTE_FAILED", "Failed to set default audio route for call: " + uuid);
         }
     }
 

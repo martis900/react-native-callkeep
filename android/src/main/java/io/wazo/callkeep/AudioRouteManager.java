@@ -8,19 +8,34 @@ import android.telecom.Connection;
 import android.telecom.CallAudioState;
 import android.util.Log;
 
+import android.media.AudioDeviceCallback;
+import android.media.AudioDeviceInfo;
+
 import java.util.List;
 
 public class AudioRouteManager {
     private static final String TAG = "AudioRouteManager";
     private final AudioManager audioManager;
     private final Context context;
+    private String uuid;
+    private String defaultAudioRoute = "speaker";
 
     public AudioRouteManager(Context context) {
         this.context = context;
         this.audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
     }
 
-    public boolean setDefaultAudioRoute(String uuid) {
+    public void setUUID(String uuid) {
+        this.uuid = uuid;
+    }
+
+    public void clearUUID() {
+        this.uuid = null;
+    }
+
+    public boolean setDefaultAudioRoute(String uuid, String audioRoute) {
+        this.uuid = uuid;
+        this.defaultAudioRoute = audioRoute;
         return setAudioRoute(uuid, "speaker");
     }
 
@@ -108,10 +123,10 @@ public class AudioRouteManager {
         switch (audioRoute.toLowerCase()) {
             case "bluetooth":
                 return device.getType() == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
-                       device.getType() == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP;
+                        device.getType() == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP;
             case "headset":
                 return device.getType() == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
-                       device.getType() == AudioDeviceInfo.TYPE_USB_HEADSET;
+                        device.getType() == AudioDeviceInfo.TYPE_USB_HEADSET;
             case "earpiece":
             case "phone":
                 return device.getType() == AudioDeviceInfo.TYPE_BUILTIN_EARPIECE;
@@ -122,28 +137,28 @@ public class AudioRouteManager {
     }
 
     private AudioDeviceInfo findSpeakerDevice(List<AudioDeviceInfo> devices) {
-         for (AudioDeviceInfo device : devices) {
-             if (device.getType() == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER) {
-                 return device;
-             }
-         }
-         return null;
+        for (AudioDeviceInfo device : devices) {
+            if (device.getType() == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER) {
+                return device;
+            }
+        }
+        return null;
     }
 
     private int getAudioRouteFromDevice(AudioDeviceInfo device) {
-         switch (device.getType()) {
-             case AudioDeviceInfo.TYPE_BLUETOOTH_SCO:
-             case AudioDeviceInfo.TYPE_BLUETOOTH_A2DP:
-                 return CallAudioState.ROUTE_BLUETOOTH;
-             case AudioDeviceInfo.TYPE_WIRED_HEADSET:
-             case AudioDeviceInfo.TYPE_USB_HEADSET:
-                 return CallAudioState.ROUTE_WIRED_HEADSET;
-             case AudioDeviceInfo.TYPE_BUILTIN_EARPIECE:
-                 return CallAudioState.ROUTE_EARPIECE;
-             case AudioDeviceInfo.TYPE_BUILTIN_SPEAKER:
-             default:
-                 return CallAudioState.ROUTE_SPEAKER;
-         }
+        switch (device.getType()) {
+            case AudioDeviceInfo.TYPE_BLUETOOTH_SCO:
+            case AudioDeviceInfo.TYPE_BLUETOOTH_A2DP:
+                return CallAudioState.ROUTE_BLUETOOTH;
+            case AudioDeviceInfo.TYPE_WIRED_HEADSET:
+            case AudioDeviceInfo.TYPE_USB_HEADSET:
+                return CallAudioState.ROUTE_WIRED_HEADSET;
+            case AudioDeviceInfo.TYPE_BUILTIN_EARPIECE:
+                return CallAudioState.ROUTE_EARPIECE;
+            case AudioDeviceInfo.TYPE_BUILTIN_SPEAKER:
+            default:
+                return CallAudioState.ROUTE_SPEAKER;
+        }
     }
 
     public boolean handleDisconnection(String uuid) {
@@ -152,5 +167,46 @@ public class AudioRouteManager {
 
     public boolean clearAudioRoute(String uuid) {
         return setAudioRoute(uuid, "speaker");
+    }
+
+    private final AudioDeviceCallback audioDeviceCallback = new AudioDeviceCallback() {
+        @Override
+        public void onAudioDevicesRemoved(AudioDeviceInfo[] removedDevices) {
+            for (AudioDeviceInfo device : removedDevices) {
+                if (device.getType() == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+                        device.getType() == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP) {
+                    Log.d(TAG, "Bluetooth audio device disconnected");
+                    // Set audio route back to speaker
+                    handleBluetoothDisconnection();
+                    break;
+                }
+            }
+        }
+    };
+
+    public void registerAudioDeviceCallback() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            audioManager.registerAudioDeviceCallback(audioDeviceCallback, null);
+        }
+    }
+
+    public void unregisterAudioDeviceCallback() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            audioManager.unregisterAudioDeviceCallback(audioDeviceCallback);
+        }
+    }
+
+    private void handleBluetoothDisconnection() {
+        // Get the active connection UUID
+        String uuid = getActiveCallUUID();
+        if (uuid != null) {
+            setAudioRoute(uuid, this.defaultAudioRoute);
+        } else {
+            Log.w(TAG, "No active call found when handling Bluetooth disconnection.");
+        }
+    }
+
+    private String getActiveCallUUID() {
+        return this.uuid;
     }
 }

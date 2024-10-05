@@ -824,6 +824,7 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule implements Life
         }
     }
 
+    @ReactMethod
     public void setAudioRoute(String uuid, String audioRoute, Promise promise) {
         boolean success = audioRouteManager.setAudioRoute(uuid, audioRoute);
         if (success) {

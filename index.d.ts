@@ -226,6 +226,8 @@ declare module 'react-native-callkeep' {
 
     static setAudioRoute: (uuid: string, inputName: string) => Promise<void>
 
+    static setDefaultAudioRoute: (uuid: string, route: string) => Promise<void>
+
     /**
      * @description supportConnectionService method is available only on Android.
      */

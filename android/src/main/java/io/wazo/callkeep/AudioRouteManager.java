@@ -36,7 +36,7 @@ public class AudioRouteManager {
     public boolean setDefaultAudioRoute(String uuid, String audioRoute) {
         this.uuid = uuid;
         this.defaultAudioRoute = audioRoute;
-        return setAudioRoute(uuid, "speaker");
+        return setAudioRoute(uuid, audioRoute);
     }
 
     public boolean setAudioRoute(String uuid, String audioRoute) {
